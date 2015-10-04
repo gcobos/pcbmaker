@@ -1,0 +1,35 @@
+
+* Load state from cell to edit form
+* Represent cuts in cells
+* Represent type of cells
+* When resizing circuit, keep cell values
+* When resizing, redraw widgets
+* Save a sheet
+* Load sheet
+* on_pause & on_resume
+* Default size of a cell from settings
+* When loading a file, resize the grid and sheet
+* When changing the width or height of cells in setup, refresh all in the board
+* Control where the files are stored & loaded
+* Export to gcode
+* Reduce memory/CPU
+* bug: Program closes if screen goes off or change orientation
+* Diagonal cuts
+- Options to export by default in settings
+- Send gcode to the CNC or email
+- Proper icons for general menu and tools
+- Info of size of the board, and circuit size
+* get_position() should return z as well
+
+MVP!
+- Use numpy to level the pcb
+- Stop using pyserial, and use native serial via bluetooth
+- Offset where to start the board (by default is 0,0)
+- Info about physical space on the edition form
+- Level pcb before the milling
+- Clearance height in settings
+- Move sheet
+- Physical preview
+- Scale circuit
+- Scroll
+- Mark different traces in different colors

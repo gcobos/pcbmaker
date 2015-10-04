@@ -1,0 +1,214 @@
+#:kivy 1.9.0
+
+ScreenManagement:
+    sheet: sheet
+    repeat_mode: repeat_mode
+    MainScreen:
+        name: 'main'
+        canvas:
+            Color:
+                rgb: 0.4, 0.4, 0.4
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        BoxLayout:
+            orientation: 'horizontal'
+            
+            BoxLayout:
+                orientation: 'vertical'
+                id: menu
+                size_hint: 0.25, 1
+            
+                Button:
+                    on_release: sheet.resize_sheet(sheet.cols, sheet.rows, clear=True)
+                    text: 'New'
+                Button:
+                    on_release: app.root.current = 'loadfile'
+                    text: 'Load'
+                Button:
+                    on_release: app.root.current = 'savefile'
+                    text: 'Save'
+                Button:
+                    on_release: app.root.current = 'exportgcode'
+                    text: 'Export'
+                Label:
+                    size_hint: 1, 0.3
+                    text: 'Tools'
+                ToggleButton:
+                    id: repeat_mode
+                    text: 'Repeat'
+
+            Scatter:
+                min_scale: 1.
+                max_Scale: 10.
+                do_scale: True
+                do_rotation: False
+                do_translation: False
+                auto_bring_to_front: True
+                DrawingArea:
+                    id: sheet
+                    size_hint: 1, 1
+                    width: self.parent.width
+                    height: self.parent.height
+                    spacing: 0, 0
+                    padding: 0, 0
+
+    LoadFilesScreen:
+        name: 'loadfile'
+        BoxLayout:
+            size: root.size
+            pos: root.pos
+            orientation: "vertical"
+            FileChooserIconView:
+                id: filechooser
+                filters: '*.cb'
+                dirselect: False
+                path: app.user_data_dir
+                #rootpath: app.user_data_dir
+                on_selection: filename_input.text = self.selection and self.selection[0] or ''
+                on_submit: sheet.load_sheet(filechooser.path, self.selection and self.selection[0] or '')
+            BoxLayout:
+                size_hint_y: None
+                height: 40
+                Button:
+                    text: "Cancel"
+                    on_release: app.root.current = 'main'
+                Button:
+                    text: "Load"
+                    on_release: sheet.load_sheet(filechooser.path, filename_input.text) if filename_input.text else ''
+
+    SaveFilesScreen:
+        name: 'savefile'
+        filename_input: filename_input
+        BoxLayout:
+            size: root.size
+            pos: root.pos
+            orientation: "vertical"
+            FileChooserIconView:
+                id: filechooser
+                filters: '*.cb'
+                dirselect: False
+                path: app.user_data_dir
+                rootpath: app.user_data_dir
+                on_selection: filename_input.text = self.selection and self.selection[0] or ''
+                on_submit: sheet.save_sheet(filechooser.path, self.selection and self.selection[0] or '')
+
+            TextInput:
+                id: filename_input
+                size_hint_y: None
+                height: 40
+                multiline: False
+                text: 'board.cb'
+
+            BoxLayout:
+                size_hint_y: None
+                height: 40
+                Button:
+                    text: "Cancel"
+                    on_release: app.root.current = 'main'
+
+                Button:
+                    text: "Save"
+                    on_release: sheet.save_sheet(filechooser.path, filename_input.text) if filename_input.text else ''
+
+    ExportFilesScreen:
+        filechooser: filechooser
+        name: 'exportgcode'
+        BoxLayout:
+            size: root.size
+            pos: root.pos
+            orientation: "vertical"
+
+            Label:
+                text: 'Export options'
+            TextInput:
+                id: filename_input2
+                size_hint_y: None
+                height: 40
+                multiline: False
+                text: 'board.gcode'
+
+            BoxLayout:
+                size_hint_y: None
+                height: 40
+                Button:
+                    text: "Cancel"
+                    on_release: app.root.current = 'main'
+
+                Button:
+                    text: "Export"
+                    on_release: sheet.export_sheet('options', app.user_data_dir, filename_input2.text) if filename_input2.text else ''
+        
+
+<CellWidget>:
+    canvas.before:
+        Color:
+            rgb: 0.5, 0.3, 0
+        Rectangle:
+            pos: root.pos
+            size: root.size
+        Color:
+            rgb: (0.0, 0.0, 0.0) if root.has_hcut else (0.45, 0.25, 0.0)
+        Line:
+            width: 3 if root.has_hcut else 2
+            points: [self.x, self.top, self.right, self.top] if root.has_hcut else [self.x+4, self.top, self.right-4, self.top]
+        Color:
+            rgb: (0.0, 0.0, 0.0) if root.has_vcut else (0.45, 0.25, 0.0)
+        Line:
+            width: 3 if root.has_vcut else 2
+            points: [self.x, self.y, self.x, self.top] if root.has_vcut else [self.x, self.y+4, self.x, self.top-4]
+        BorderImage:
+            source: 'atlas://data/symbols/' + root.celltype
+            pos: self.pos
+            size: self.size
+
+
+<CellForm>:
+    id: cellform
+    size_hint: None, None
+    auto_dismiss: True
+    size: 300, 400
+    BoxLayout:
+        id: fields
+        orientation: 'vertical'
+        ToggleButton:
+            id: hcut
+            text: 'Horizontal cut'
+        ToggleButton:
+            id: vcut
+            text: 'Vertical cut'
+        BoxLayout:
+            orientation: 'horizontal'
+            Label:
+                text: 'Cell content'
+            Spinner:
+                id: celltype
+                text: 'Clear'
+                values: ['Clear', 'Hole', 'Heater', 'Pocket', '/ Diagonal', '\\ Diagonal']
+        BoxLayout:
+            orientation: 'horizontal'
+            Label:
+                text: 'Column width'
+            Label:
+                text: 'Row height'
+        BoxLayout:
+            orientation: 'horizontal'
+            TextInput:
+                id: column_width
+                input_filter: 'float'
+                multiline: False
+                text: '0'
+            TextInput:
+                id: row_height
+                input_filter: 'float'
+                multiline: False
+                text: '0'
+        BoxLayout:
+            orientation: 'horizontal'
+            Label:
+                text: 'Row span'
+            Spinner:
+                id: rowspan
+                text: '1'
+                values: ['1', '2', '3', '4']
+
