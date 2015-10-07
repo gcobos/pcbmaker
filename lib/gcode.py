@@ -17,8 +17,9 @@ class GCodeExport(object):
     def __init__(self,
                  z_flying = 3.0, feed_flying = 600,
                  z_cutting = -0.1, feed_cutting = 300, 
-                 heater_clearance = 1.5, hole_depth = 0.35,
-                 pocket_depth = 0.2):
+                 heater_clearance = 1.0, hole_depth = 0.4,
+                 pocket_depth = 0.2, x_offset = 0.0,
+                 y_offset = 0.0, z_offset = 0.0):
         self.z_flying = z_flying
         self.z_cutting = z_cutting
         self.feed_flying = feed_flying
@@ -26,12 +27,15 @@ class GCodeExport(object):
         self.heater_clearance = heater_clearance        # In mm
         self.hole_depth = hole_depth                    # In mm
         self.pocket_depth = pocket_depth                # In mm
+        self.x_offset = x_offset                        # In mm
+        self.y_offset = y_offset                        # In mm
+        self.z_offset = z_offset                        # In mm
         self.g = None
         self.s = None
         
         self._is_cutting = None
 
-    def from_sheet(self, sheet):
+    def from_sheet(self, sheet, visualize=False):
 
         result = StringIO.StringIO()
 
@@ -39,11 +43,10 @@ class GCodeExport(object):
                       x_axis='Y', y_axis='X',
                       setup=False, aerotech_include=False) as g:
             g.absolute()
-            g.move(x=0, y=0)
+            g.move(x=self.y_offset, y=self.x_offset, z=self.z_offset)
             self.g = g
             self.s = sheet
             self._is_cutting = None
-            
             self._make_hcuts()
             self._make_vcuts()
             self._make_diagonals()
@@ -51,9 +54,10 @@ class GCodeExport(object):
             self._make_pockets()
             self._make_holes()
             self._set_cutting(False)
-            g.move(x=0, y=0)
+            g.move(x=self.y_offset, y=self.x_offset, z=self.z_offset)
             
-            #g.view('matplotlib')
+            if visualize:
+                g.view('matplotlib')
             result = result.getvalue()
 
         return result
@@ -65,7 +69,7 @@ class GCodeExport(object):
         depth = depth or self.z_cutting
         if cutting:
             self.g.feed(self.feed_flying)
-            self.g.abs_move(z=0.0)
+            self.g.abs_move(z=self.z_offset)
             self.g.feed(self.feed_cutting)
             self.g.move(z=depth)
         else:
@@ -73,13 +77,13 @@ class GCodeExport(object):
             self.g.move(z=self.z_flying)            
 
     def _get_position(self, col, row):
-        z = 0.0 # This will matter when leveling the board
+        z = self.z_offset # This will matter when leveling the board
         x = sum([self.s.get_cell_width(i) for i in range(col)])
         y = sum([self.s.get_cell_height(j) for j in range(row)])
         return x, y, z
 
 
-    def _get_segments(self, rows, cols, transposed=False, checker=None, **params):
+    def _get_segments(self, cols, rows, transposed=False, checker=None, **params):
         holder = {}
         if checker is None:
             checker = self.s.get_cell
@@ -105,7 +109,7 @@ class GCodeExport(object):
     def _make_hcuts(self):
                 
         # Horizontal cuts
-        hcuts = self._get_segments(self.s.rows+1, self.s.cols+1, transposed=False,
+        hcuts = self._get_segments(self.s.cols+1, self.s.rows+1, transposed=False,
                                    checker=self.s.get_cut, axis=self.s.AXIS_HORIZONTAL)
         #print "HCuts", hcuts
     
@@ -117,22 +121,19 @@ class GCodeExport(object):
                 cuts = list(reversed([[end, begin] for begin, end in hcuts[row]]))
             else:
                 cuts = hcuts[row]
-            #print "Dir", direction, list(cuts)
             for a, b in cuts:
                 self._set_cutting(False)
                 xpos, ypos, zpos = self._get_position(a, row)
                 self.g.move(x=xpos, y=ypos)
                 self._set_cutting(True)
-                #print "Cut from", xpos, ypos, "to",
                 xpos, ypos, zpos = self._get_position(b, row)
-                #print xpos, ypos
                 self.g.move(x=xpos, y=ypos)
             direction = -direction
 
     def _make_vcuts(self):
                 
         # Vertical cuts
-        vcuts = self._get_segments(self.s.cols+1, self.s.rows+1, transposed=True, 
+        vcuts = self._get_segments(self.s.rows+1, self.s.cols+1, transposed=True, 
                                    checker=self.s.get_cut, axis=self.s.AXIS_VERTICAL)
         #print "VCuts", vcuts
     
@@ -144,15 +145,12 @@ class GCodeExport(object):
                 cuts = list(reversed([[end, begin] for begin, end in vcuts[col]]))
             else:
                 cuts = vcuts[col]
-            #print "Dir", direction, list(cuts)
             for a, b in cuts:
                 self._set_cutting(False)
                 xpos, ypos, zpos = self._get_position(col, a)
                 self.g.move(x=xpos, y=ypos)
                 self._set_cutting(True)
-                #print "Cut from", xpos, ypos, "to",
                 xpos, ypos, zpos = self._get_position(col, b)
-                #print xpos, ypos
                 self.g.move(x=xpos, y=ypos)
             direction = -direction
 
@@ -238,7 +236,7 @@ class GCodeExport(object):
         clearance = clearance or self.heater_clearance
         self._set_cutting(False)
         xpos1, ypos1, zpos1 = self._get_position(begin, row)
-        xpos2, ypos2, zpos2 = self._get_position(end, row + 1)
+        xpos2, ypos2, zpos2 = self._get_position(end, row + self.s.get_row_span(begin, row))
         i = xpos1
         direction = 1
         while i < xpos2:
@@ -292,69 +290,6 @@ class GCodeExport(object):
         DEFAULT_PORTS='''rfcomm0
 rfcomm1
 rfcomm2
-tty1
-tty10
-tty11
-tty12
-tty13
-tty14
-tty15
-tty16
-tty17
-tty18
-tty19
-tty2
-tty20
-tty21
-tty22
-tty23
-tty24
-tty25
-tty26
-tty27
-tty28
-tty29
-tty3
-tty30
-tty31
-tty32
-tty33
-tty34
-tty35
-tty36
-tty37
-tty38
-tty39
-tty4
-tty40
-tty41
-tty42
-tty43
-tty44
-tty45
-tty46
-tty47
-tty48
-tty49
-tty5
-tty50
-tty51
-tty52
-tty53
-tty54
-tty55
-tty56
-tty57
-tty58
-tty59
-tty6
-tty60
-tty61
-tty62
-tty63
-tty7
-tty8
-tty9
 ttyGS0
 ttyGS1
 ttyGS2
@@ -394,17 +329,25 @@ if __name__=='__main__':
     
     from sheet import Sheet
     
+    g = GCodeExport()
+    
     s = Sheet(2, 2, cell_width=1, cell_height=1)
-    s.load('../tests/square.cb')    
-    s.load('../tests/board.cb')
+    #s.load('../tests/square.cb')
+    #s.load('../tests/board.cb')
+    s.load('../tests/octantes1y4.cb')
+    print s
+    #heaters = g._get_segments(s.cols, s.rows, checker=s.is_heater)
+    #print "Heaters", heaters
+    g.from_sheet(s)
+    #g._make_heaters()
+
     
     #s.set_cut(0, 0, [True, True]); s.set_cut(1, 0, [True, True]); s.set_cut(2, 0, [False, True])
     #s.set_cut(0, 1, [False, False]); s.set_cut(1, 1, [True, True]); s.set_cut(2, 1, [False, True])
     #s.set_cut(0, 2, [False, False]); s.set_cut(1, 2, [False, False]); s.set_cut(2, 2, [False, False])
     #s.save('../tests/test.cb')
     
-    print s
-    g = GCodeExport()
-    g.from_sheet(s)
+    #print s
+    #g.from_sheet(s)
     
     

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import os
-#import cProfile
+from kivy import platform
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.gridlayout import GridLayout
@@ -16,6 +16,9 @@ from kivy.uix.popup import Popup
 
 from lib.sheet import Sheet
 from lib.gcode import GCodeExport
+
+if platform=='linux':
+    import cProfile
 
 class ScreenManagement(ScreenManager):
     pass
@@ -37,6 +40,7 @@ class CellWidget(Widget):
     has_hcut = BooleanProperty(False)
     has_vcut = BooleanProperty(False)
     celltype = StringProperty('clear')
+    row_span = NumericProperty(1)
 
     def __init__(self, sheet, col, row, **kwargs):
         super(CellWidget, self).__init__(**kwargs)
@@ -46,6 +50,7 @@ class CellWidget(Widget):
     
     def get_celltype_resource(self, value):
         return value.replace('/ Diagonal', 'slash').replace('\\ Diagonal', 'backslash').lower()
+
     
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
@@ -69,6 +74,7 @@ class CellWidget(Widget):
         form.ids['celltype'].text = self.sheet.get_celltype_text(self.sheet.get_cell(self.col, self.row), complete=True)
         form.ids['column_width'].text = unicode(self.sheet.get_cell_width(self.col))
         form.ids['row_height'].text = unicode(self.sheet.get_cell_height(self.row))
+        form.ids['row_span'].text = unicode(self.sheet.get_row_span(self.col, self.row))
         form.bind(on_dismiss=self.configure_cell)
         form.open()
         form.is_open = True
@@ -78,13 +84,16 @@ class CellWidget(Widget):
         self.has_vcut = form.ids['vcut'].state == 'down'
         celltype_text = form.ids['celltype'].text
         self.celltype = self.get_celltype_resource(celltype_text)
+        self.row_span = form.ids['row_span'].text
         column_width = float(form.ids['column_width'].text)
         row_height = float(form.ids['row_height'].text)
+        row_span = int(form.ids['row_span'].text)
         self.sheet.set_cut(self.col, self.row, self.has_hcut, axis=self.sheet.AXIS_HORIZONTAL)
         self.sheet.set_cut(self.col, self.row, self.has_vcut, axis=self.sheet.AXIS_VERTICAL)
         self.sheet.set_cell(self.col, self.row, self.sheet.get_celltype_id(celltype_text))
         self.sheet.set_cell_width(self.col, column_width)
         self.sheet.set_cell_height(self.row, row_height)
+        self.sheet.set_row_span(self.col, self.row, row_span)
         form.unbind(on_dismiss=self.configure_cell)
 
 
@@ -167,18 +176,20 @@ class DrawingArea(GridLayout):
 
     def export_sheet(self, options, path, filename):
         gcode = GCodeExport()
-        data = gcode.from_sheet(self.sheet)
+        data = gcode.from_sheet(self.sheet, visualize=(platform=='linux'))
         path = App.get_running_app().user_data_dir
         with open(os.path.join(path, filename), 'w') as f:
             f.write("{}\n".format(data))
-        #gcode.send(data)
+        if platform=='linux':
+            gcode.send(data)
         App.get_running_app().root.current = 'main'
 
 
 class PCBMakerApp(App):
 
     cellform = ObjectProperty(None)
-    use_kivy_settings = False
+    if platform=='linux':
+        use_kivy_settings = False
 
     def __init__(self, **kwargs):
         super(PCBMakerApp, self).__init__(**kwargs)
@@ -191,6 +202,15 @@ class PCBMakerApp(App):
         config.setdefaults('cell', {
             'width': '2.54',
             'height': '2.54'
+        })
+        config.setdefaults('gcode', {
+            'z_flying': '5.0',
+            'feed_flying': '800.0',
+            'z_cutting': '-0.1',
+            'feed_cutting': '50.0',
+            'heater_clearance': '1.0',
+            'z_drilling': '0.4',
+            'z_pocket': '0.2',
         })
 
     def build(self):
@@ -219,7 +239,44 @@ class PCBMakerApp(App):
           "title": "Cell height",
           "desc": "Default cell height in millimeters",
           "section": "cell",
-          "key": "height" }
+          "key": "height" },
+        { "type": "title",
+          "title": "GCode settings" },
+        { "type": "numeric",
+          "title": "Height flying",
+          "desc": "Height when moving around (in mm)",
+          "section": "gcode",
+          "key": "z_flying" },
+        { "type": "numeric",
+          "title": "Flying feed rate",
+          "desc": "Feed rate when flying in mm/min",
+          "section": "gcode",
+          "key": "feed_flying" },
+        { "type": "numeric",
+          "title": "Depth milling",
+          "desc": "Height when milling (in mm)",
+          "section": "gcode",
+          "key": "z_cutting" },
+        { "type": "numeric",
+          "title": "Milling feed rate",
+          "desc": "Feed rate when milling in mm/min",
+          "section": "gcode",
+          "key": "feed_cutting" },
+        { "type": "numeric",
+          "title": "Heater clearance",
+          "desc": "Clearance for heaters in mm",
+          "section": "gcode",
+          "key": "heater_clearance" },
+        { "type": "numeric",
+          "title": "Depth drilling",
+          "desc": "Default height when drilling holes (in mm)",
+          "section": "gcode",
+          "key": "z_drilling" },
+        { "type": "numeric",
+          "title": "Depth pocketing",
+          "desc": "Default height for pockets in (in mm)",
+          "section": "gcode",
+          "key": "z_pocket" }
         ]"""
         settings.add_json_panel('PCB Maker',
             self.config, data=jsondata)
@@ -246,17 +303,18 @@ class PCBMakerApp(App):
 
 
     def on_start(self):
-        #self.profile = cProfile.Profile()
-        #self.profile.enable()
-        pass
+        if platform=='linux':
+            self.profile = cProfile.Profile()
+            self.profile.enable()
 
     def on_pause(self):
         print "Pause..."
         return True
 
     def on_stop(self):
-        #self.profile.disable()
-        #self.profile.dump_stats('myapp.profile')
+        if platform=='linux':
+            self.profile.disable()
+            self.profile.dump_stats('myapp.profile')
         print "Stopping..."
         return True
 

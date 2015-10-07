@@ -15,11 +15,14 @@
 * Reduce memory/CPU
 * bug: Program closes if screen goes off or change orientation
 * Diagonal cuts
+* get_position() should return z as well
+* Row span
 - Options to export by default in settings
 - Send gcode to the CNC or email
 - Proper icons for general menu and tools
 - Info of size of the board, and circuit size
-* get_position() should return z as well
+
+- Undo at least one step
 
 MVP!
 - Use numpy to level the pcb

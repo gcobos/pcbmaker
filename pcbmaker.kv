@@ -1,5 +1,8 @@
 #:kivy 1.9.0
 
+<Widget>:
+    font_size: '40dp'
+
 ScreenManagement:
     sheet: sheet
     repeat_mode: repeat_mode
@@ -17,7 +20,7 @@ ScreenManagement:
             BoxLayout:
                 orientation: 'vertical'
                 id: menu
-                size_hint: 0.25, 1
+                size_hint_x: 0.16
             
                 Button:
                     on_release: sheet.resize_sheet(sheet.cols, sheet.rows, clear=True)
@@ -69,7 +72,7 @@ ScreenManagement:
                 on_submit: sheet.load_sheet(filechooser.path, self.selection and self.selection[0] or '')
             BoxLayout:
                 size_hint_y: None
-                height: 40
+                height: 80
                 Button:
                     text: "Cancel"
                     on_release: app.root.current = 'main'
@@ -96,13 +99,13 @@ ScreenManagement:
             TextInput:
                 id: filename_input
                 size_hint_y: None
-                height: 40
+                height: 80
                 multiline: False
                 text: 'board.cb'
 
             BoxLayout:
                 size_hint_y: None
-                height: 40
+                height: 80
                 Button:
                     text: "Cancel"
                     on_release: app.root.current = 'main'
@@ -119,34 +122,60 @@ ScreenManagement:
             pos: root.pos
             orientation: "vertical"
 
-            Label:
-                text: 'Export options'
-            TextInput:
-                id: filename_input2
-                size_hint_y: None
-                height: 40
-                multiline: False
-                text: 'board.gcode'
+        TabbedPanel:
+            size_hint: 1, 1
+            do_default_tab: False
+            tab_height: 80
+            tab_width: '300sp'
+            tab_size_hint_x: None
 
-            BoxLayout:
-                size_hint_y: None
-                height: 40
-                Button:
-                    text: "Cancel"
-                    on_release: app.root.current = 'main'
+            TabbedPanelItem:
+                text: 'Connection'
+                Label:
+                    text: 'First tab content area'
+            TabbedPanelItem:
+                text: 'Setup'
+                BoxLayout:
+                    Label:
+                        text: 'Second tab content area'
+                    Button:
+                        text: 'Button that does nothing'
+            TabbedPanelItem:
+                text: 'Leveling'
+                RstDocument:
+                    text: 'Hola'
+            TabbedPanelItem:
+                text: 'Milling'
+                BoxLayout:
+                    orientation: 'vertical'
+                    Label:
+                        text: 'Aqui estan las opciones'
+                    TextInput:
+                        size_hint_y: 1
+                        height: 80
+                        multiline: False
+                        text: 'board.gcode'
 
-                Button:
-                    text: "Export"
-                    on_release: sheet.export_sheet('options', app.user_data_dir, filename_input2.text) if filename_input2.text else ''
+                    BoxLayout:
+                        height: 80
+                        size_hint_y: 1
+                        orientation: 'horizontal'
+                        Button:
+                            text: "Cancel"
+                            on_release: app.root.current = 'main'
+                        Button:
+                            text: "Export"
+                            on_release: sheet.export_sheet('options', app.user_data_dir, filename_input2.text) if filename_input2.text else ''
         
 
 <CellWidget>:
+    height_hint: int(root.row_span)
     canvas.before:
         Color:
             rgb: 0.5, 0.3, 0
         Rectangle:
             pos: root.pos
-            size: root.size
+            size: root.size            
         Color:
             rgb: (0.0, 0.0, 0.0) if root.has_hcut else (0.45, 0.25, 0.0)
         Line:
@@ -184,7 +213,7 @@ ScreenManagement:
             Spinner:
                 id: celltype
                 text: 'Clear'
-                values: ['Clear', 'Hole', 'Heater', 'Pocket', '/ Diagonal', '\\ Diagonal']
+                values: ['Clear', 'Hole', 'Heater', 'Pocket', '/ Diagonal', '\\ Diagonal', 'Row span']
         BoxLayout:
             orientation: 'horizontal'
             Label:
@@ -208,7 +237,8 @@ ScreenManagement:
             Label:
                 text: 'Row span'
             Spinner:
-                id: rowspan
+                id: row_span
                 text: '1'
                 values: ['1', '2', '3', '4']
+
 

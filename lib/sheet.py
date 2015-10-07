@@ -30,7 +30,7 @@ class Sheet(object):
     AXIS_VERTICAL=1
 
     CELL_TYPES_LUT={
-        CELL_TYPE_CLEAR:       (u' ', 'Clear'),
+        CELL_TYPE_CLEAR:        (u' ', 'Clear'),
         CELL_TYPE_HOLE:         (u'o', 'Hole'),
         CELL_TYPE_HEATER:       (u'S', 'Heater'),
         CELL_TYPE_POCKET:       (u'=', 'Pocket'),
@@ -211,12 +211,40 @@ class Sheet(object):
     def set_cell(self, col, row, value):
         """
             Set the cell at the position specified by row, col
-            return: A cell, or None if the coordinates are out of the sheet
         """
         if col>=0 and col<self.cols and row>=0 and row<self.rows:
             self._ensure_pos_cell(col, row)
             self.cells[row][col] = value
             return
+        raise IndexError
+
+    def set_row_span(self, col, row, row_span):
+        """
+            Set the row span for a cell at the position specified by row, col
+        """
+        row_span = row_span or 1
+        if col>=0 and col<self.cols and row>=0 and row<self.rows:
+            self._ensure_pos_cell(col, row)
+            for i in range(row + 1, min(self.rows, row + row_span)):
+                self._ensure_pos_cell(col, i)
+                self.cells[i][col] = Sheet.CELL_TYPE_ROW_SPAN
+            return
+        raise IndexError
+
+    def get_row_span(self, col, row):
+        """
+            Returns the number of extra cells down (row span) that are occupied by the position specified by row, col
+        """
+        row_span = 1
+        if col>=0 and col<self.cols and row>=0 and row<=self.rows-row_span:
+            self._ensure_pos_cell(col, row)
+            for i in range(row + 1, self.rows):
+                self._ensure_pos_cell(col, i)
+                if self.cells[i][col] == Sheet.CELL_TYPE_ROW_SPAN:
+                    row_span +=1
+                else:
+                    break
+            return row_span
         raise IndexError
 
     def get_cut(self, col, row, axis=None):
@@ -305,7 +333,7 @@ class Sheet(object):
                 for col in range(self.cols+1):
                     self.set_cut(col, row, [True if hcuts[col*2+1]=='-' else False, True if line[col*2]=='|' else False])
                     if col<self.cols and row<self.rows:
-                        self.set_cell(col, row, self.get_celltype_id(line[col*2+1]))            
+                        self.set_cell(col, row, self.get_celltype_id(line[col*2+1]))
 
     def save(self, filename):
         with open(filename, 'w') as f:
@@ -379,6 +407,8 @@ if __name__=='__main__':
     s.set_cell(4, 3, Sheet.CELL_TYPE_HEATER)
     s.set_cell(5, 3, Sheet.CELL_TYPE_HEATER)
     s.set_cell(6, 3, Sheet.CELL_TYPE_HEATER)
+    s.set_row_span(0,0, 20)
+    print "Row span?", s.get_row_span(0,0)
 
     s.set_cell_width(4, 2.1)
     print s
