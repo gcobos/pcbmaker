@@ -17,16 +17,16 @@ class GCodeExport(object):
     def __init__(self,
                  z_flying = 3.0, feed_flying = 600,
                  z_cutting = -0.1, feed_cutting = 300, 
-                 heater_clearance = 1.0, hole_depth = 0.4,
-                 pocket_depth = 0.2, x_offset = 0.0,
+                 heater_clearance = 1.0, z_drilling = 0.4,
+                 z_pocket = 0.2, x_offset = 0.0,
                  y_offset = 0.0, z_offset = 0.0):
         self.z_flying = z_flying
         self.z_cutting = z_cutting
         self.feed_flying = feed_flying
         self.feed_cutting = feed_cutting
         self.heater_clearance = heater_clearance        # In mm
-        self.hole_depth = hole_depth                    # In mm
-        self.pocket_depth = pocket_depth                # In mm
+        self.z_drilling = z_drilling                    # In mm
+        self.z_pocket = z_pocket                        # In mm
         self.x_offset = x_offset                        # In mm
         self.y_offset = y_offset                        # In mm
         self.z_offset = z_offset                        # In mm
@@ -42,10 +42,12 @@ class GCodeExport(object):
         with mecode.G(outfile=result, print_lines=False, 
                       x_axis='Y', y_axis='X',
                       setup=False, aerotech_include=False) as g:
-            g.absolute()
-            g.move(x=self.y_offset, y=self.x_offset, z=self.z_offset)
             self.g = g
             self.s = sheet
+
+            g.absolute()
+            self._set_cutting(False)
+            g.move(x=self.y_offset, y=self.x_offset, z=self.z_offset)
             self._is_cutting = None
             self._make_hcuts()
             self._make_vcuts()
@@ -54,7 +56,7 @@ class GCodeExport(object):
             self._make_pockets()
             self._make_holes()
             self._set_cutting(False)
-            g.move(x=self.y_offset, y=self.x_offset, z=self.z_offset)
+            g.move(x=self.y_offset, y=self.x_offset)
             
             if visualize:
                 g.view('matplotlib')
@@ -158,7 +160,7 @@ class GCodeExport(object):
         """
             Make all holes in the board
         """
-        depth = depth or self.hole_depth
+        depth = depth or self.z_drilling
         direction = 1
         for row in range(self.s.rows):
             cols = range(self.s.cols)
@@ -172,7 +174,7 @@ class GCodeExport(object):
                 self._set_cutting(False)
                 xpos, ypos, zpos = self._get_position(col, row)
                 self.g.move(x=xpos + self.s.get_cell_width(col)/2.0, y=ypos + self.s.get_cell_height(row)/2.0)
-                self._set_cutting(True, depth = -depth)
+                self._set_cutting(True, depth = depth)
             direction = -direction
 
     def _make_diagonals(self, depth = None):
@@ -256,7 +258,7 @@ class GCodeExport(object):
         """
             Make all the pockets in the board (for now only horizontal)
         """
-        depth = depth or self.pocket_depth
+        depth = depth or self.z_pocket
         # Pockets
         pockets = self._get_segments(self.s.cols, self.s.rows, checker=self.s.is_pocket)
         #print "Pockets", pockets
@@ -278,52 +280,48 @@ class GCodeExport(object):
         self._set_cutting(False)
         xpos, ypos, zpos = self._get_position(begin, row)
         self.g.move(x=xpos, y=ypos + self.s.get_cell_height(row)/2.0)
-        self._set_cutting(True, depth = -depth)
+        self._set_cutting(True, depth = depth)
         xpos, ypos, zpos = self._get_position(end, row)
         self.g.move(x=xpos, y=ypos + self.s.get_cell_height(row)/2.0)
         self._set_cutting(False)
 
-    def send(self, data):
+    def send(self, data, conn = None):
         import serial
         import time
+
+        if not conn:
  
-        DEFAULT_PORTS='''rfcomm0
+            DEFAULT_PORTS='''rfcomm0
 rfcomm1
 rfcomm2
-ttyGS0
-ttyGS1
-ttyGS2
-ttyGS3
-ttyS0
-ttyS1
-ttyS2
-ttyS3
-ttySAC0
-ttySAC1
-ttySAC2
-ttySAC3'''
+socket/bluetooth'''
 
+            for device in DEFAULT_PORTS.split('\n'):
+                try:
+                    # Open grbl serial port
+                    with serial.Serial("/dev/{}".format(device), 57600) as conn:
+                        print "Pude conectar a ", device
+                        # Wake up grbl
+                        conn.write("\r\n\r\n")
+                        time.sleep(2)   # Wait for grbl to initialize
+                        conn.flushInput()  # Flush startup text in serial input
+                        break
+                except:
+                    pass
+                
         
-        for device in DEFAULT_PORTS.split('\n'):
-            try:
-                # Open grbl serial port
-                with serial.Serial("/dev/{}".format(device), 57600) as s:
-                    print "Pude conectar a ", device
-                    # Wake up grbl
-                    s.write("\r\n\r\n")
-                    time.sleep(2)   # Wait for grbl to initialize
-                    s.flushInput()  # Flush startup text in serial input
- 
-                    # Stream g-code to grbl
-                    for line in data.split('\n'):
-                        l = line.strip() # Strip all EOL characters for streaming
-                        print 'Sending: ' + l,
-                        s.write(l + '\n') # Send g-code block to grbl
-                        grbl_out = s.readline() # Wait for grbl response with carriage return
-                        print ' : ' + grbl_out.strip()
-                break
-            except Exception as e:
-                print e
+        print "Actually sending data!!!", conn
+        # Stream g-code to grbl
+        try:
+            for line in data.split('\n'):
+                l = line.strip() # Strip all EOL characters for streaming
+                print 'Sending: ' + l,
+                conn.write(l + '\n') # Send g-code block to grbl
+                grbl_out = conn.readline() # Wait for grbl response with carriage return
+                print ' : ' + grbl_out.strip()
+        except Exception as e:
+            print e
+
 
 if __name__=='__main__':
     

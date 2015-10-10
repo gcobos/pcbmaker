@@ -13,7 +13,8 @@ from kivy.uix.image import Image
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
 from kivy.properties import NumericProperty, ListProperty, BooleanProperty, ObjectProperty, StringProperty
 from kivy.uix.popup import Popup
-
+from jnius import autoclass, JavaException
+from time import sleep
 from lib.sheet import Sheet
 from lib.gcode import GCodeExport
 
@@ -51,21 +52,45 @@ class CellWidget(Widget):
     def get_celltype_resource(self, value):
         return value.replace('/ Diagonal', 'slash').replace('\\ Diagonal', 'backslash').lower()
 
-    
     def on_touch_down(self, touch):
+        if touch.is_touch and self.collide_point(*touch.pos):
+            touch.grab(self)
+            form = App.get_running_app().cellform
+            if App.get_running_app().root.repeat_mode.state == 'down':
+                self.configure_cell(form)
+                return True
+            self.show_form(form)
+            return True
+            
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            # I received my grabbed touch
+            return super(CellWidget, self).on_touch_move(touch)
+        else:
+            pass
+            
+    def on_touch_up(self, touch):
+        if touch.grab_current is self:
+            # I receive my grabbed touch, I must ungrab it!
+            touch.ungrab(self)
+        else:
+            # it's a normal touch
+            pass
+    """
+    def on_touch_down(self, touch):
+        form = App.get_running_app().cellform
         if self.collide_point(*touch.pos):
             touch.grab(self)
             if App.get_running_app().root.repeat_mode.state == 'down':
-                self.configure_cell(App.get_running_app().cellform)
+                self.configure_cell(form)
                 return True
-            form = App.get_running_app().cellform
             self.show_form(form)
             return True
         return super(CellWidget, self).on_touch_down(touch)
 
     def on_touch_move(self, touch):
-        #print "Moving!"
         return super(CellWidget, self).on_touch_move(touch)
+    """ 
 
     def show_form(self, form):
         form.title="Editing cell ({}, {}) properties".format(self.col, self.row)
@@ -77,7 +102,7 @@ class CellWidget(Widget):
         form.ids['row_span'].text = unicode(self.sheet.get_row_span(self.col, self.row))
         form.bind(on_dismiss=self.configure_cell)
         form.open()
-        form.is_open = True
+        form.closed = False
     
     def configure_cell(self, form):        
         self.has_hcut = form.ids['hcut'].state == 'down'
@@ -98,7 +123,10 @@ class CellWidget(Widget):
 
 
 class CellForm(Popup):
-    pass
+    closed = True
+    
+    def on_dismiss(self):
+        self.closed = True
 
 class DrawingArea(GridLayout):
 
@@ -175,20 +203,51 @@ class DrawingArea(GridLayout):
 
 
     def export_sheet(self, options, path, filename):
-        gcode = GCodeExport()
+        config = App.get_running_app().config
+        gcode = GCodeExport(
+            z_flying = float(config.getdefault('gcode', 'z_flying', 3.0)),
+            feed_flying = float(config.getdefault('gcode', 'feed_flying', 1000)),
+            z_cutting = float(config.getdefault('gcode', 'z_cutting', -0.1)),
+            feed_cutting = float(config.getdefault('gcode', 'feed_cutting', 90)),
+            heater_clearance = float(config.getdefault('gcode', 'heater_clearance', 1.0)),
+            z_drilling = float(config.getdefault('gcode', 'z_drilling', 0.4)),
+            z_pocket = float(config.getdefault('gcode', 'z_pocket', -0.2)),
+            x_offset = float(config.getdefault('gcode', 'x_offset', 0.0)),
+            y_offset = float(config.getdefault('gcode', 'y_offset', 0.0)), 
+            z_offset = float(config.getdefault('gcode', 'z_offset', 0.0))
+        )
+
+        print "I have a GCodeExport object!"
         data = gcode.from_sheet(self.sheet, visualize=(platform=='linux'))
+        print "I have GCode data!", len(data)
+        app = App.get_running_app()
+
+        # TODO Save only if you're asked to do it!
+        print "I save the file..."
         path = App.get_running_app().user_data_dir
         with open(os.path.join(path, filename), 'w') as f:
             f.write("{}\n".format(data))
-        if platform=='linux':
-            gcode.send(data)
+        print "Platform?", platform
+        if platform=='android':  #  TODO: Set this as an option, True by default!!
+            print "Conecta a bt..."
+            app.do_connect()
+        print "Send data to CNC!!!!!", app.socket
+        print "Receiving", app.recv_stream
+        print "Sending", app.send_stream
+        gcode.send(data, conn = app.socket if app.connected else None)
         App.get_running_app().root.current = 'main'
+
 
 
 class PCBMakerApp(App):
 
+    connected = False
+    socket = None
+    recv_stream = None
+    send_stream = None
+    
     cellform = ObjectProperty(None)
-    if platform=='linux':
+    if platform!='linux':
         use_kivy_settings = False
 
     def __init__(self, **kwargs):
@@ -216,6 +275,45 @@ class PCBMakerApp(App):
     def build(self):
         self.cellform = CellForm()
 
+    def do_connect(self):
+        try:
+            if self.connected:
+                self.socket.close()
+                self.connected = False
+            self.socket, self.recv_stream, self.send_stream = self.get_socket_stream('BT UART')
+            if self.send_stream:
+                self.connected = self.socket.isConnected()
+        except Exception as e:
+            print 'Failed to connect'
+            print(e)
+
+    def get_socket_stream(self, name):
+        try: 
+            BluetoothAdapter = autoclass('android.bluetooth.BluetoothAdapter')
+            BluetoothDevice = autoclass('android.bluetooth.BluetoothDevice')
+            BluetoothSocket = autoclass('android.bluetooth.BluetoothSocket')
+            UUID = autoclass('java.util.UUID')
+        except JavaException as e:
+            print("Couldn't load some android classes %s" % str(e))
+            return None, None, None
+
+        paired_devices = BluetoothAdapter.getDefaultAdapter().getBondedDevices().toArray()
+        socket = None
+        if not paired_devices:
+            print("There are no paired bluetooth devices")
+            return None, None, None
+        for device in paired_devices:
+            print "I see", repr(device.getName())
+            if True or device.getName() == name:
+                socket = device.createRfcommSocketToServiceRecord(
+                    UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
+                socket.connect()
+                sleep(2)
+                recv_stream = socket.getInputStream()
+                send_stream = socket.getOutputStream()
+                break
+        return socket, recv_stream, send_stream
+    
     def build_settings(self, settings):
         jsondata = """[
         { "type": "title",

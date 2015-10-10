@@ -1,8 +1,5 @@
 #:kivy 1.9.0
 
-<Widget>:
-    font_size: '40dp'
-
 ScreenManagement:
     sheet: sheet
     repeat_mode: repeat_mode
@@ -47,7 +44,7 @@ ScreenManagement:
                 do_scale: True
                 do_rotation: False
                 do_translation: False
-                auto_bring_to_front: True
+                auto_bring_to_front: False
                 DrawingArea:
                     id: sheet
                     size_hint: 1, 1
@@ -122,51 +119,8 @@ ScreenManagement:
             pos: root.pos
             orientation: "vertical"
 
-        TabbedPanel:
-            size_hint: 1, 1
-            do_default_tab: False
-            tab_height: 80
-            tab_width: '300sp'
-            tab_size_hint_x: None
-
-            TabbedPanelItem:
-                text: 'Connection'
-                Label:
-                    text: 'First tab content area'
-            TabbedPanelItem:
-                text: 'Setup'
-                BoxLayout:
-                    Label:
-                        text: 'Second tab content area'
-                    Button:
-                        text: 'Button that does nothing'
-            TabbedPanelItem:
-                text: 'Leveling'
-                RstDocument:
-                    text: 'Hola'
-            TabbedPanelItem:
-                text: 'Milling'
-                BoxLayout:
-                    orientation: 'vertical'
-                    Label:
-                        text: 'Aqui estan las opciones'
-                    TextInput:
-                        size_hint_y: 1
-                        height: 80
-                        multiline: False
-                        text: 'board.gcode'
-
-                    BoxLayout:
-                        height: 80
-                        size_hint_y: 1
-                        orientation: 'horizontal'
-                        Button:
-                            text: "Cancel"
-                            on_release: app.root.current = 'main'
-                        Button:
-                            text: "Export"
-                            on_release: sheet.export_sheet('options', app.user_data_dir, filename_input2.text) if filename_input2.text else ''
-        
+        exportPanel:
+            id: 'setup'
 
 <CellWidget>:
     height_hint: int(root.row_span)
@@ -195,7 +149,6 @@ ScreenManagement:
 <CellForm>:
     id: cellform
     size_hint: None, None
-    auto_dismiss: True
     size: 300, 400
     BoxLayout:
         id: fields
@@ -242,3 +195,223 @@ ScreenManagement:
                 values: ['1', '2', '3', '4']
 
 
+[exportPanel@TabbedPanel]:
+    size_hint: 1, 1
+    do_default_tab: False
+    tab_height: 60
+    tab_width: '200sp'
+
+    TabbedPanelItem:
+        text: 'Connect'
+        BoxLayout:
+            orientation: 'horizontal'
+            BoxLayout:
+                size_hint_y: 1
+                orientation: 'vertical'
+                Label:
+                    text: 'Hola'
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint: 0.1, 1
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: 1
+                BoxLayout:
+                    orientation: 'vertical'
+                    Label:
+                        text: 'Machine Control'
+                        height: 80
+                    GridLayout:
+                        row_force_default: True
+                        row_default_width: 40
+                        row_default_height: 50
+                        cols: 5
+                        rows: 3
+                        Label:
+                            size_hint: 0.2, 0.3
+                            text: ''
+                        Button: 
+                            size_hint: 0.2, 0.3
+                            text: 'Y+'
+                        Label:
+                            size_hint: 0.2, 0.3
+                            text: ''
+                        Label:
+                            size_hint: 0.2, 0.3
+                            text: ''
+                        Button: 
+                            size_hint: 0.2, 0.3
+                            text: 'Z+'
+                        Button: 
+                            size_hint: 0.2, 0.3
+                            text: 'X-'
+                        Button: 
+                            disabled: True
+                            size_hint: 0.2, 0.3
+                            text: ''
+                        Button: 
+                            size_hint: 0.2, 0.3
+                            text: 'X+'
+                        Label:
+                            size_hint: 0.2, 0.3
+                            text: ''
+                        Button: 
+                            disabled: True
+                            size_hint: 0.2, 0.3
+                            text: ''
+                        Label:
+                            size_hint: 0.2, 0.3
+                            text: ''
+                        Button: 
+                            size_hint: 0.2, 0.3
+                            text: 'Y-'
+                        Label:
+                            text: ''
+                            size_hint: 0.2, 0.3
+                        Label:
+                            text: ''
+                            size_hint: 0.2, 0.3
+                        Button: 
+                            text: 'Z-'
+                            size_hint: 0.2, 0.3
+
+
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint: 1, 0.3
+
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        size_hint: 1, 0.2
+                        Label:
+                            text: 'Aqui estan las opciones'
+                        TextInput:
+                            id: filename_input2
+                            size_hint_y: 1
+                            height: 80
+                            multiline: False
+                            text: 'board.gcode'
+
+                    BoxLayout:
+                        height: 80
+                        size_hint_y: 1
+                        orientation: 'horizontal'
+                        Button:
+                            text: "Cancel"
+                            on_release: app.root.current = 'main'
+                        Button:
+                            text: "Export"
+                            on_release: app.root.sheet.export_sheet('options', app.user_data_dir, filename_input2.text) if filename_input2.text else ''
+
+
+
+    TabbedPanelItem:
+        text: 'Setup'
+        
+        BoxLayout: 
+            orientation: 'horizontal'
+            GridLayout:
+                cols: 2
+                Label:
+                    text: 'Z Flying'
+                TextInput:
+                    multiline: False
+                    text: '5.0'
+                Label:
+                    text: 'Flying feed'
+                TextInput:
+                    multiline: False
+                    text: '1000'
+                Label:
+                    text: 'Z Cutting'
+                TextInput:
+                    multiline: False
+                    text: '-0.1'
+                Label:
+                    text: 'Cutting feed'
+                TextInput:
+                    multiline: False
+                    text: '100'
+                Label:
+                    text: 'Heaters clearance'
+                TextInput:
+                    multiline: False
+                    text: '0.8'
+                Label:
+                    text: 'Z Drilling'
+                TextInput:
+                    multiline: False
+                    text: '-0.8'
+                Label:
+                    text: 'Z for Pockets'
+                TextInput:
+                    multiline: False
+                    text: '-0.4'
+                Label:
+                    text: ''
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint: 0.1, 1
+
+            GridLayout:
+                cols: 2
+                Label:
+                    text: 'Z Flying'
+                TextInput:
+                    multiline: False
+                    text: '5.0'
+                Label:
+                    text: 'Flying feed'
+                TextInput:
+                    multiline: False
+                    text: '1000'
+                Label:
+                    text: 'Z Cutting'
+                TextInput:
+                    multiline: False
+                    text: '-0.1'
+                Label:
+                    text: 'Cutting feed'
+                TextInput:
+                    multiline: False
+                    text: '100'
+                Label:
+                    text: 'Heaters clearance'
+                TextInput:
+                    multiline: False
+                    text: '0.8'
+                Label:
+                    text: 'Z Drilling'
+                TextInput:
+                    multiline: False
+                    text: '-0.8'
+                Label:
+                    text: 'Z for Pockets'
+                TextInput:
+                    multiline: False
+                    text: '-0.4'
+                Label:
+                    text: ''
+
+                BoxLayout:
+                    orientation: 'horizontal'
+            
+                        
+                BoxLayout:
+                    height: 60
+                    size_hint_y: 1
+                    orientation: 'horizontal'
+                    Button:
+                        text: "Cancel"
+                        on_release: app.root.current = 'main'
+                    Button:
+                        text: "Export"
+                        on_release: app.root.sheet.export_sheet('options', app.user_data_dir, filename_input2.text) if filename_input2.text else ''
+
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint: 0.1, 1
+
+    TabbedPanelItem:
+        text: 'Share'
+        

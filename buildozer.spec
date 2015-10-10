@@ -28,7 +28,7 @@ source.include_exts = py,png,jpg,kv,atlas
 version = 1.0.0
 
 # (list) Application requirements
-requirements = kivy
+requirements = kivy, pyserial
 #requirements = pyserial, numpy, kivy
 
 # Funciono:  requirements = pyserial, python, numpy, pyserial, kivy, pyserial
@@ -43,7 +43,7 @@ requirements = kivy
 orientation = landscape
 
 # (bool) Indicate if the application should be fullscreen or not
-fullscreen = 1
+fullscreen = 0
 
 
 #
@@ -51,7 +51,8 @@ fullscreen = 1
 #
 
 # (list) Permissions
-#android.permissions = INTERNET
+android.permissions = INTERNET, BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_PRIVILEGED
+
 
 # (int) Android API to use
 #android.api = 14
