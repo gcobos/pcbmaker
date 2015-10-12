@@ -177,11 +177,16 @@ class DrawingArea(GridLayout):
         self.sheet.rows = rows
 
         i = self.cols*self.rows
+        config = App.get_running_app().config
+        if clear:
+            self.set_cells_width(float(config.getdefault('cell', 'width', 1.0)))
+            self.set_cells_height(float(config.getdefault('cell', 'height', 1.0)))
+
         for row in range(self.rows):
             for col in range(self.cols):
                 i -= 1
                 cell = self.children[i]
-                if clear:
+                if clear:                    
                     self.sheet.set_cell(col, row, self.sheet.CELL_TYPE_CLEAR)
                     self.sheet.set_cut(col, row, [False, False])
                 cell.col = col
@@ -231,10 +236,10 @@ class DrawingArea(GridLayout):
         if platform=='android':  #  TODO: Set this as an option, True by default!!
             print "Conecta a bt..."
             app.do_connect()
-        print "Send data to CNC!!!!!", app.socket
-        print "Receiving", app.recv_stream
-        print "Sending", app.send_stream
-        gcode.send(data, conn = app.socket if app.connected else None)
+            if app.connected:
+                gcode.send_bt(data, app.recv_stream, app.send_stream)
+        else:
+            pass #gcode.send(data)
         App.get_running_app().root.current = 'main'
 
 
@@ -270,6 +275,9 @@ class PCBMakerApp(App):
             'heater_clearance': '1.0',
             'z_drilling': '0.4',
             'z_pocket': '0.2',
+            'x_offset': '0.0',
+            'y_offset': '0.0',
+            'z_offset': '0.0',
         })
 
     def build(self):
@@ -292,6 +300,8 @@ class PCBMakerApp(App):
             BluetoothAdapter = autoclass('android.bluetooth.BluetoothAdapter')
             BluetoothDevice = autoclass('android.bluetooth.BluetoothDevice')
             BluetoothSocket = autoclass('android.bluetooth.BluetoothSocket')
+            InputStreamReader = autoclass('java.io.InputStreamReader')
+            BufferedReader = autoclass('java.io.BufferedReader')
             UUID = autoclass('java.util.UUID')
         except JavaException as e:
             print("Couldn't load some android classes %s" % str(e))
@@ -303,13 +313,15 @@ class PCBMakerApp(App):
             print("There are no paired bluetooth devices")
             return None, None, None
         for device in paired_devices:
+            print "Interface paired device", dir(device), device.describeContents(), device.getAddress(), device.toString()
             print "I see", repr(device.getName())
             if True or device.getName() == name:
                 socket = device.createRfcommSocketToServiceRecord(
                     UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
                 socket.connect()
                 sleep(2)
-                recv_stream = socket.getInputStream()
+                reader = InputStreamReader(socket.getInputStream(), 'US-ASCII')
+                recv_stream = BufferedReader(reader)
                 send_stream = socket.getOutputStream()
                 break
         return socket, recv_stream, send_stream
@@ -351,7 +363,7 @@ class PCBMakerApp(App):
           "section": "gcode",
           "key": "feed_flying" },
         { "type": "numeric",
-          "title": "Depth milling",
+          "title": "Height milling",
           "desc": "Height when milling (in mm)",
           "section": "gcode",
           "key": "z_cutting" },
@@ -366,15 +378,30 @@ class PCBMakerApp(App):
           "section": "gcode",
           "key": "heater_clearance" },
         { "type": "numeric",
-          "title": "Depth drilling",
+          "title": "Height drilling",
           "desc": "Default height when drilling holes (in mm)",
           "section": "gcode",
           "key": "z_drilling" },
         { "type": "numeric",
-          "title": "Depth pocketing",
+          "title": "Height pocketing",
           "desc": "Default height for pockets in (in mm)",
           "section": "gcode",
-          "key": "z_pocket" }
+          "key": "z_pocket" },
+        { "type": "numeric",
+          "title": "X Offset",
+          "desc": "Starting X position in mm",
+          "section": "gcode",
+          "key": "x_offset" },
+        { "type": "numeric",
+          "title": "Y Offset",
+          "desc": "Starting Y position in mm",
+          "section": "gcode",
+          "key": "y_offset" },
+        { "type": "numeric",
+          "title": "Z Offset",
+          "desc": "Starting Z position in mm",
+          "section": "gcode",
+          "key": "z_offset" }
         ]"""
         settings.add_json_panel('PCB Maker',
             self.config, data=jsondata)

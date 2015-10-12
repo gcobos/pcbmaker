@@ -44,11 +44,8 @@ class GCodeExport(object):
                       setup=False, aerotech_include=False) as g:
             self.g = g
             self.s = sheet
-
             g.absolute()
             self._set_cutting(False)
-            g.move(x=self.y_offset, y=self.x_offset, z=self.z_offset)
-            self._is_cutting = None
             self._make_hcuts()
             self._make_vcuts()
             self._make_diagonals()
@@ -71,19 +68,18 @@ class GCodeExport(object):
         depth = depth or self.z_cutting
         if cutting:
             self.g.feed(self.feed_flying)
-            self.g.abs_move(z=self.z_offset)
+            self.g.move(z=self.z_offset)
             self.g.feed(self.feed_cutting)
-            self.g.move(z=depth)
+            self.g.move(z=self.z_offset + depth)
         else:
             self.g.feed(self.feed_flying)
-            self.g.move(z=self.z_flying)            
+            self.g.move(z=self.z_offset + self.z_flying)            
 
     def _get_position(self, col, row):
         z = self.z_offset # This will matter when leveling the board
-        x = sum([self.s.get_cell_width(i) for i in range(col)])
-        y = sum([self.s.get_cell_height(j) for j in range(row)])
+        x = self.x_offset + sum([self.s.get_cell_width(i) for i in range(col)])
+        y = self.y_offset + sum([self.s.get_cell_height(j) for j in range(row)])
         return x, y, z
-
 
     def _get_segments(self, cols, rows, transposed=False, checker=None, **params):
         holder = {}
@@ -285,42 +281,78 @@ class GCodeExport(object):
         self.g.move(x=xpos, y=ypos + self.s.get_cell_height(row)/2.0)
         self._set_cutting(False)
 
-    def send(self, data, conn = None):
+    def send(self, data):
+    
         import serial
         import time
 
-        if not conn:
- 
-            DEFAULT_PORTS='''rfcomm0
+        DEFAULT_PORTS='''rfcomm2
+rfcomm0
 rfcomm1
-rfcomm2
 socket/bluetooth'''
 
-            for device in DEFAULT_PORTS.split('\n'):
-                try:
-                    # Open grbl serial port
-                    with serial.Serial("/dev/{}".format(device), 57600) as conn:
-                        print "Pude conectar a ", device
-                        # Wake up grbl
-                        conn.write("\r\n\r\n")
-                        time.sleep(2)   # Wait for grbl to initialize
-                        conn.flushInput()  # Flush startup text in serial input
-                        break
-                except:
-                    pass
-                
-        
-        print "Actually sending data!!!", conn
+        conn = None
+        for device in DEFAULT_PORTS.split('\n'):
+            try:
+                # Open grbl serial port
+                with serial.Serial("/dev/{}".format(device), 57600) as conn:
+                    print "Pude conectar a ", device
+                    # Wake up grbl
+                    conn.write("\r\n\r\n")
+                    time.sleep(2)   # Wait for grbl to initialize
+                    conn.flushInput()  # Flush startup text in serial input
+                    # Stream g-code to grbl
+                    for line in data.split('\n'):
+                        l = line.strip() # Strip all EOL characters for streaming
+                        print 'Sending: ' + l
+                        conn.write(l + '\n') # Send g-code block to grbl
+                        grbl_out = conn.readline() # Wait for grbl response with carriage return
+                        print ' : ' + grbl_out.strip()
+            except:
+                pass
+        if not conn:
+            print "No hay donde conectar!"
+            return
+
+
+    def send_bt(self, data, recvs, sends):
+        import StringIO
+        print "Actually sending data!!!"
         # Stream g-code to grbl
         try:
             for line in data.split('\n'):
                 l = line.strip() # Strip all EOL characters for streaming
                 print 'Sending: ' + l,
-                conn.write(l + '\n') # Send g-code block to grbl
-                grbl_out = conn.readline() # Wait for grbl response with carriage return
+                for i in "{}\n".format(l):
+                    sends.write(i) # Send g-code block to grbl
+
+                grbl_out = ""
+                while True:
+                    if recvs.ready():
+                        print "Is ready"
+                        try:
+                            print "About to wait"
+                            grbl_out = recvs.readLine()
+                            print "We get something!", grbl_out
+                            break
+                        except Exception as e:
+                            print "Agghh!", e
+                    print "Another loop with data :("
+                            
+                """
+                readbuff = StringIO.StringIO()
+                while not grbl_out.endswith('\n'):
+                    time.sleep(1)
+                    lread = recvs.read(readbuff)
+                    print "Bytes leidos", lread
+                    if lread > 0:
+                        grbl_out += readbuff.getvalue()
+                """
                 print ' : ' + grbl_out.strip()
         except Exception as e:
             print e
+    
+
 
 
 if __name__=='__main__':

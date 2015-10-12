@@ -28,7 +28,7 @@ source.include_exts = py,png,jpg,kv,atlas
 version = 1.0.0
 
 # (list) Application requirements
-requirements = kivy, pyserial
+requirements = kivy
 #requirements = pyserial, numpy, kivy
 
 # Funciono:  requirements = pyserial, python, numpy, pyserial, kivy, pyserial

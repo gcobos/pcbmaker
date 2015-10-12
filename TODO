@@ -17,8 +17,12 @@
 * Diagonal cuts
 * get_position() should return z as well
 * Row span
-- Options to export by default in settings
-- Send gcode to the CNC or email
+* Options to export by default in settings
+* Send gcode to the CNC or email
+* Stop using pyserial, and use native serial via bluetooth
+- Proper thread for sending and receivind data via bluetooth
+- Proper panel to connect / disconnect from bluetooth
+- Controls to position the CNC machine
 - Proper icons for general menu and tools
 - Info of size of the board, and circuit size
 
@@ -26,7 +30,6 @@
 
 MVP!
 - Use numpy to level the pcb
-- Stop using pyserial, and use native serial via bluetooth
 - Offset where to start the board (by default is 0,0)
 - Info about physical space on the edition form
 - Level pcb before the milling
