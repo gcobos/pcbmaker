@@ -20,20 +20,24 @@
 * Options to export by default in settings
 * Send gcode to the CNC or email
 * Stop using pyserial, and use native serial via bluetooth
+* Diagonals with rowspan
+* Offset where to start the board (by default is 0,0)
+* Clearance height in settings
+- Name for the exported file is taken if possible, from the original cb file
+- Save configuration with every circuit
+- Layer for contours and reference holes
 - Proper thread for sending and receivind data via bluetooth
 - Proper panel to connect / disconnect from bluetooth
 - Controls to position the CNC machine
 - Proper icons for general menu and tools
 - Info of size of the board, and circuit size
-
 - Undo at least one step
 
 MVP!
+- Herramienta para modificar los anchos de todas las columnas, dando sólo el tamaño máximo de ancho y alto de la placa
 - Use numpy to level the pcb
-- Offset where to start the board (by default is 0,0)
 - Info about physical space on the edition form
 - Level pcb before the milling
-- Clearance height in settings
 - Move sheet
 - Physical preview
 - Scale circuit

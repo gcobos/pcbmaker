@@ -35,7 +35,7 @@ class SaveFilesScreen(Screen):
     pass
 
 class ExportFilesScreen(Screen):
-    pass
+    filename_input2 = ObjectProperty()
 
 class CellWidget(Widget):
     has_hcut = BooleanProperty(False)
@@ -56,8 +56,8 @@ class CellWidget(Widget):
         if touch.is_touch and self.collide_point(*touch.pos):
             touch.grab(self)
             form = App.get_running_app().cellform
-            if App.get_running_app().root.repeat_mode.state == 'down':
-                self.configure_cell(form)
+            if App.get_running_app().root.clone_mode.state == 'down':
+                self.configure_cell(form, set_dimensions = False)
                 return True
             self.show_form(form)
             return True
@@ -81,7 +81,7 @@ class CellWidget(Widget):
         form = App.get_running_app().cellform
         if self.collide_point(*touch.pos):
             touch.grab(self)
-            if App.get_running_app().root.repeat_mode.state == 'down':
+            if App.get_running_app().root.clone_mode.state == 'down':
                 self.configure_cell(form)
                 return True
             self.show_form(form)
@@ -104,7 +104,7 @@ class CellWidget(Widget):
         form.open()
         form.closed = False
     
-    def configure_cell(self, form):        
+    def configure_cell(self, form, set_dimensions = True):        
         self.has_hcut = form.ids['hcut'].state == 'down'
         self.has_vcut = form.ids['vcut'].state == 'down'
         celltype_text = form.ids['celltype'].text
@@ -116,9 +116,16 @@ class CellWidget(Widget):
         self.sheet.set_cut(self.col, self.row, self.has_hcut, axis=self.sheet.AXIS_HORIZONTAL)
         self.sheet.set_cut(self.col, self.row, self.has_vcut, axis=self.sheet.AXIS_VERTICAL)
         self.sheet.set_cell(self.col, self.row, self.sheet.get_celltype_id(celltype_text))
-        self.sheet.set_cell_width(self.col, column_width)
-        self.sheet.set_cell_height(self.row, row_height)
-        self.sheet.set_row_span(self.col, self.row, row_span)
+        if set_dimensions:
+            self.sheet.set_cell_width(self.col, column_width)
+            self.sheet.set_cell_height(self.row, row_height)
+        if row_span > 1:
+            self.sheet.set_row_span(self.col, self.row, row_span)
+            for i in range(1, row_span):
+                pos = ((self.sheet.rows - self.row - i) * self.sheet.cols) - self.col -1
+                if pos < self.sheet.cols * self.sheet.rows:
+                    cell = self.parent.children[pos]
+                    cell.celltype = 'row span'
         form.unbind(on_dismiss=self.configure_cell)
 
 
@@ -206,6 +213,8 @@ class DrawingArea(GridLayout):
         self.sheet.save(os.path.join(path, filename))
         App.get_running_app().root.current = 'main'
 
+    def get_export_filename(self, default = 'board2.gcode'):
+        return default
 
     def export_sheet(self, options, path, filename):
         config = App.get_running_app().config
@@ -222,13 +231,10 @@ class DrawingArea(GridLayout):
             z_offset = float(config.getdefault('gcode', 'z_offset', 0.0))
         )
 
-        print "I have a GCodeExport object!"
         data = gcode.from_sheet(self.sheet, visualize=(platform=='linux'))
-        print "I have GCode data!", len(data)
         app = App.get_running_app()
 
         # TODO Save only if you're asked to do it!
-        print "I save the file..."
         path = App.get_running_app().user_data_dir
         with open(os.path.join(path, filename), 'w') as f:
             f.write("{}\n".format(data))
@@ -270,10 +276,10 @@ class PCBMakerApp(App):
         config.setdefaults('gcode', {
             'z_flying': '5.0',
             'feed_flying': '800.0',
-            'z_cutting': '-0.1',
+            'z_cutting': '-0.05',
             'feed_cutting': '50.0',
             'heater_clearance': '1.0',
-            'z_drilling': '0.4',
+            'z_drilling': '1.5',
             'z_pocket': '0.2',
             'x_offset': '0.0',
             'y_offset': '0.0',

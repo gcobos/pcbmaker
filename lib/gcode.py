@@ -17,8 +17,8 @@ class GCodeExport(object):
     def __init__(self,
                  z_flying = 3.0, feed_flying = 600,
                  z_cutting = -0.1, feed_cutting = 300, 
-                 heater_clearance = 1.0, z_drilling = 0.4,
-                 z_pocket = 0.2, x_offset = 0.0,
+                 heater_clearance = 1.0, z_drilling = -8.0,
+                 z_pocket = -6.0, x_offset = 0.0,
                  y_offset = 0.0, z_offset = 0.0):
         self.z_flying = z_flying
         self.z_cutting = z_cutting
@@ -62,7 +62,7 @@ class GCodeExport(object):
         return result
 
     def _set_cutting(self, cutting, depth=None):
-        if cutting == self._is_cutting:
+        if cutting == self._is_cutting and depth is None:
             return
         self._is_cutting = cutting
         depth = depth or self.z_cutting
@@ -189,8 +189,7 @@ class GCodeExport(object):
                 if not (self.s.is_slash(col, row) or self.s.is_backslash(col, row)):
                     continue
                 xpos1, ypos1, zpos1 = self._get_position(col, row)
-                xpos2 = xpos1 + self.s.get_cell_width(col)
-                ypos2 = ypos1 + self.s.get_cell_height(row)
+                xpos2, ypos2, zpos2 = self._get_position(col + 1, row + self.s.get_row_span(col, row))
                 if direction == -1:
                     xpos1, xpos2 = xpos2, xpos1
                     ypos1, ypos2 = ypos2, ypos1
@@ -224,6 +223,8 @@ class GCodeExport(object):
             for a, b in heater_cols:
                 coords = (b, a) if a > b else (a, b)
                 self._make_heater(row, *coords, clearance = clearance)
+                self._set_cutting(False)
+
             direction = -direction
 
 
@@ -235,9 +236,10 @@ class GCodeExport(object):
         self._set_cutting(False)
         xpos1, ypos1, zpos1 = self._get_position(begin, row)
         xpos2, ypos2, zpos2 = self._get_position(end, row + self.s.get_row_span(begin, row))
-        i = xpos1
+        self.g.move(x=xpos1, y=ypos1)
+        i = xpos1 + clearance
         direction = 1
-        while i < xpos2:
+        while i <= xpos2 - clearance:
             if direction==1:
                 self.g.move(x=i, y=ypos1)
                 self._set_cutting(True)
@@ -249,6 +251,7 @@ class GCodeExport(object):
             i += clearance
             direction = -direction
             self._set_cutting(False)
+
 
     def _make_pockets(self, depth = None):
         """
@@ -270,17 +273,75 @@ class GCodeExport(object):
             for a, b in pocket_cols:
                 self._make_pocket(row, a, b, depth=depth)
             direction = -direction
-
-    def _make_pocket(self, row, begin, end, depth):
-
-        self._set_cutting(False)
-        xpos, ypos, zpos = self._get_position(begin, row)
-        self.g.move(x=xpos, y=ypos + self.s.get_cell_height(row)/2.0)
-        self._set_cutting(True, depth = depth)
-        xpos, ypos, zpos = self._get_position(end, row)
-        self.g.move(x=xpos, y=ypos + self.s.get_cell_height(row)/2.0)
         self._set_cutting(False)
 
+
+    def _make_pocket(self, row, begin, end, depth, separation = 0.1):
+        self._set_cutting(False)
+        xpos1, ypos1, zpos1 = self._get_position(begin, row)
+        xpos2, ypos2, zpos2 = self._get_position(end, row + 1)
+        center_y = (ypos2 - ypos1) / 2.0
+        num_layers = int(math.ceil(-depth / separation))
+        for layer in range(num_layers):
+            z = layer * depth / num_layers
+            for rect in range(num_layers - layer):
+                height_from = center_y - rect * depth / num_layers
+                height_to = center_y + rect * depth / num_layers
+                self.g.move(x=xpos1, y=ypos1 + height_from)
+                self._set_cutting(True)
+                if rect == 0:
+                    self.g.move(z=z + self.z_cutting)
+                self.g.move(x=xpos2, y=ypos1 + height_from)
+                self.g.move(x=xpos2, y=ypos1 + height_to)
+                self.g.move(x=xpos1, y=ypos1 + height_to)
+                
+
+    def _make_pocket_zz(self, row, begin, end, depth, separation = 0.3):
+        self._set_cutting(False)
+        xpos1, ypos1, zpos1 = self._get_position(begin, row)
+        xpos2, ypos2, zpos2 = self._get_position(end, row)
+        height = self.s.get_cell_height(row)
+        height_from = height / 2.0 + depth
+        height_to = height_from - depth * 2.0
+
+        print "From", height_from, "to", height_to
+        z = 0.0
+        self.g.move(x=xpos1, y=ypos1 + height_from)
+        self._set_cutting(True, depth = z)
+        last = False
+        while depth < 0.0 and z >= depth and height_to - height_from >= 0.0:
+            print "Bucle"
+            i = 0.0
+            delta = separation
+            self.g.move(x=xpos2, y=ypos1 + height_from + i)
+            while i <= height_to - height_from:
+                i += delta
+                if i >= height_to - height_from:
+                    i -= delta / 4.0
+                self.g.move(x=xpos2, y=ypos1 + height_from + i)
+                self.g.move(x=xpos1, y=ypos1 + height_from + i)
+                i += delta
+                if i >= height_to - height_from:
+                    i -= delta / 4.0
+                self.g.move(x=xpos1, y=ypos1 + height_from + i)
+                self.g.move(x=xpos2, y=ypos1 + height_from + i)
+
+            z -= separation
+            height_from += separation
+            height_to -= separation
+            if last:
+                break            
+            if height_to - height_from < 0.0 or z < depth:
+                height_from = height / 2.0
+                height_to = height_from + 0.01
+                z = depth
+                last = True
+                print "Salto!!"
+            self.g.move(x=xpos1, y=ypos1 + height_from)
+            self.g.move(z=z)
+
+        print "Out", depth < 0.0, z > depth, height_to - height_from >= 0.0
+             
     def send(self, data):
     
         import serial
