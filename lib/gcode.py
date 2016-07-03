@@ -228,6 +228,33 @@ class GCodeExport(object):
             direction = -direction
 
 
+    def _make_heater_slow(self, row, begin, end, clearance = None):
+        """
+            Create a single heater, horizontally only for now
+        """
+        clearance = clearance or self.heater_clearance
+        self._set_cutting(False)
+        xpos1, ypos1, zpos1 = self._get_position(begin, row)
+        xpos2, ypos2, zpos2 = self._get_position(end, row + self.s.get_row_span(begin, row))
+        self.g.move(x=xpos1, y=ypos1)
+        self._set_cutting(True)
+        i = xpos1
+        direction = 1
+        while i <= xpos2 - clearance:
+            self.g.move(x=i, y=ypos1)
+            self.g.move(x=i, y=ypos2 - clearance)
+            self.g.move(x=i, y=ypos1)
+            i += clearance*2.0
+        self._set_cutting(False)
+        i -= clearance
+        self.g.move(x=i, y=ypos2)
+        self._set_cutting(True)
+        while i >= xpos1:
+            self.g.move(x=i, y=ypos2)
+            self.g.move(x=i, y=ypos1 + clearance)
+            self.g.move(x=i, y=ypos2)
+            i -= clearance*2.0
+
     def _make_heater(self, row, begin, end, clearance = None):
         """
             Create a single heater, horizontally only for now
@@ -276,7 +303,7 @@ class GCodeExport(object):
         self._set_cutting(False)
 
 
-    def _make_pocket(self, row, begin, end, depth, separation = 0.1):
+    def _make_pocket(self, row, begin, end, depth, separation = 0.2):
         self._set_cutting(False)
         xpos1, ypos1, zpos1 = self._get_position(begin, row)
         xpos2, ypos2, zpos2 = self._get_position(end, row + 1)
@@ -424,12 +451,12 @@ if __name__=='__main__':
     
     s = Sheet(2, 2, cell_width=1, cell_height=1)
     #s.load('../tests/square.cb')
-    #s.load('../tests/board.cb')
-    s.load('../tests/octantes1y4.cb')
+    s.load('../tests/board.cb')
+    #s.load('../tests/octantes1y4.cb')
     print s
     #heaters = g._get_segments(s.cols, s.rows, checker=s.is_heater)
     #print "Heaters", heaters
-    g.from_sheet(s)
+    g.from_sheet(s, visualize=True)
     #g._make_heaters()
 
     

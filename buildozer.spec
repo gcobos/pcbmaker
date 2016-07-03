@@ -53,12 +53,11 @@ fullscreen = 0
 # (list) Permissions
 android.permissions = INTERNET, BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_PRIVILEGED
 
-
 # (int) Android API to use
-#android.api = 14
+android.api = 23
 
 # (int) Minimum API required (8 = Android 2.2 devices)
-android.minapi = 14
+#android.minapi = 14
 
 # (int) Android SDK version to use
 android.sdk = 21

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
 
 import os
 from kivy import platform
@@ -231,7 +231,7 @@ class DrawingArea(GridLayout):
             z_offset = float(config.getdefault('gcode', 'z_offset', 0.0))
         )
 
-        data = gcode.from_sheet(self.sheet, visualize=(platform=='linux'))
+        data = gcode.from_sheet(self.sheet, visualize=False and (platform=='linux'))
         app = App.get_running_app()
 
         # TODO Save only if you're asked to do it!

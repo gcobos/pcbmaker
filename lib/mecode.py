@@ -779,8 +779,8 @@ class G(object):
         history = np.array(self.position_history)
 
         if backend == 'matplotlib':
-            from mpl_toolkits.mplot3d import Axes3D
             import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import Axes3D
             fig = plt.figure()
             ax = fig.gca(projection='3d')
             ax.set_aspect('equal')
@@ -799,7 +799,6 @@ class G(object):
             ax.set_xlim(mean_x - max_range, mean_x + max_range)
             ax.set_ylim(mean_y - max_range, mean_y + max_range)
             ax.set_zlim(mean_z - max_range, mean_z + max_range)
-
             plt.show()
         elif backend == 'mayavi':
             from mayavi import mlab
