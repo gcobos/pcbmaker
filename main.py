@@ -220,6 +220,7 @@ class DrawingArea(GridLayout):
     def set_export_filename(self, default = ''):
         root_app = App.get_running_app().root
         default = default or root_app.ids['filename_input'].text
+        _, default = os.path.split(default)
         basename, extension = os.path.splitext(default)
         extension = 'gcode'
         root_app.ids['export_panel'].ids['filename_input2'].text = ".".join((basename, extension))
