@@ -23,7 +23,7 @@
 * Diagonals with rowspan
 * Offset where to start the board (by default is 0,0)
 * Clearance height in settings
-- Name for the exported file is taken if possible, from the original cb file
+* Name for the exported file is taken if possible, from the original cb file
 - Save configuration with every circuit
 - Layer for contours and reference holes
 - Proper thread for sending and receivind data via bluetooth

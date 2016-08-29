@@ -29,7 +29,7 @@ ScreenManagement:
                     on_release: app.root.current = 'savefile'
                     text: 'Save'
                 Button:
-                    on_release: app.root.current = 'exportgcode'
+                    on_release: app.root.current = 'exportgcode'; sheet.set_export_filename()
                     text: 'Export'
                 Label:
                     size_hint: 1, 0.3
@@ -113,6 +113,7 @@ ScreenManagement:
 
     ExportFilesScreen:
         filechooser: filechooser
+        export_panel: export_panel
         name: 'exportgcode'
         BoxLayout:
             size: root.size
@@ -120,7 +121,7 @@ ScreenManagement:
             orientation: "vertical"
 
         exportPanel:
-            id: 'setup'
+            id: export_panel
 
 <CellWidget>:
     height_hint: int(root.row_span)
@@ -129,7 +130,7 @@ ScreenManagement:
             rgb: 0.5, 0.3, 0
         Rectangle:
             pos: root.pos
-            size: root.size            
+            size: root.size
         Color:
             rgb: (0.0, 0.0, 0.0) if root.has_hcut else (0.45, 0.25, 0.0)
         Line:
@@ -195,11 +196,50 @@ ScreenManagement:
                 values: ['1', '2', '3', '4']
 
 
-[exportPanel@TabbedPanel]:
+<exportPanel@TabbedPanel>:
+
     size_hint: 1, 1
     do_default_tab: False
     tab_height: 60
     tab_width: '200sp'
+    filename_input2: filename_input2
+
+    TabbedPanelItem:
+        text: 'Export as G-Code'
+
+        BoxLayout: 
+            orientation: 'horizontal'
+
+            BoxLayout:
+                orientation: 'horizontal'
+
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint: 1, 0.5
+
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        size_hint_y: None
+                        Label:
+                            text: 'Export as'
+                        TextInput:
+                            id: filename_input2
+                            size_hint_y: 1
+                            height: 80
+                            multiline: False
+                            text: 'board.gcode'
+
+                    BoxLayout:
+                        height: 80
+                        size_hint_y: None
+                        orientation: 'horizontal'
+                        Button:
+                            text: "Cancel"
+                            on_release: app.root.current = 'main'
+                        Button:
+                            text: "Export"
+                            on_release: app.root.sheet.export_sheet('options', app.user_data_dir, filename_input2.text) if filename_input2.text else ''
+
 
     TabbedPanelItem:
         text: 'Connect'
@@ -275,39 +315,9 @@ ScreenManagement:
                             text: 'Z-'
                             size_hint: 0.2, 0.3
 
-
-                BoxLayout:
-                    orientation: 'vertical'
-                    size_hint: 1, 0.3
-
-                    BoxLayout:
-                        orientation: 'horizontal'
-                        size_hint: 1, 0.2
-                        Label:
-                            text: 'Aqui estan las opciones'
-                        TextInput:
-                            id: filename_input2
-                            size_hint_y: 1
-                            height: 80
-                            multiline: False
-                            text: 'board.gcode'
-
-                    BoxLayout:
-                        height: 80
-                        size_hint_y: 1
-                        orientation: 'horizontal'
-                        Button:
-                            text: "Cancel"
-                            on_release: app.root.current = 'main'
-                        Button:
-                            text: "Export"
-                            on_release: app.root.sheet.export_sheet('options', app.user_data_dir, filename_input2.text) if filename_input2.text else ''
-
-
-
     TabbedPanelItem:
         text: 'Setup'
-        
+
         BoxLayout: 
             orientation: 'horizontal'
             GridLayout:

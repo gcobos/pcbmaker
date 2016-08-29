@@ -11,6 +11,7 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
+from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.properties import NumericProperty, ListProperty, BooleanProperty, ObjectProperty, StringProperty
 from kivy.uix.popup import Popup
 from jnius import autoclass, JavaException
@@ -18,8 +19,8 @@ from time import sleep
 from lib.sheet import Sheet
 from lib.gcode import GCodeExport
 
-if platform=='linux':
-    import cProfile
+#if platform=='linux':
+#    import cProfile
 
 class ScreenManagement(ScreenManager):
     pass
@@ -35,7 +36,11 @@ class SaveFilesScreen(Screen):
     pass
 
 class ExportFilesScreen(Screen):
-    filename_input2 = ObjectProperty()
+    pass
+
+#class exportPanel(TabbedPanel):
+#    filename_input2 = ObjectProperty()
+
 
 class CellWidget(Widget):
     has_hcut = BooleanProperty(False)
@@ -48,7 +53,7 @@ class CellWidget(Widget):
         self.sheet = sheet
         self.col = col
         self.row = row
-    
+
     def get_celltype_resource(self, value):
         return value.replace('/ Diagonal', 'slash').replace('\\ Diagonal', 'backslash').lower()
 
@@ -61,14 +66,14 @@ class CellWidget(Widget):
                 return True
             self.show_form(form)
             return True
-            
+
     def on_touch_move(self, touch):
         if touch.grab_current is self:
             # I received my grabbed touch
             return super(CellWidget, self).on_touch_move(touch)
         else:
             pass
-            
+
     def on_touch_up(self, touch):
         if touch.grab_current is self:
             # I receive my grabbed touch, I must ungrab it!
@@ -202,7 +207,6 @@ class DrawingArea(GridLayout):
                 cell.has_vcut = self.sheet.get_cut(col, row, axis=self.sheet.AXIS_VERTICAL)
                 cell.celltype = cell.get_celltype_resource(self.sheet.get_celltype_text(
                                                 self.sheet.get_cell(col, row), complete=True))
-    
 
     def load_sheet(self, path, filename):
         self.sheet.load(os.path.join(path, filename))
@@ -213,8 +217,12 @@ class DrawingArea(GridLayout):
         self.sheet.save(os.path.join(path, filename))
         App.get_running_app().root.current = 'main'
 
-    def get_export_filename(self, default = 'board2.gcode'):
-        return default
+    def set_export_filename(self, default = ''):
+        root_app = App.get_running_app().root
+        default = default or root_app.ids['filename_input'].text
+        basename, extension = os.path.splitext(default)
+        extension = 'gcode'
+        root_app.ids['export_panel'].ids['filename_input2'].text = ".".join((basename, extension))
 
     def export_sheet(self, options, path, filename):
         config = App.get_running_app().config
@@ -227,7 +235,7 @@ class DrawingArea(GridLayout):
             z_drilling = float(config.getdefault('gcode', 'z_drilling', 0.4)),
             z_pocket = float(config.getdefault('gcode', 'z_pocket', -0.2)),
             x_offset = float(config.getdefault('gcode', 'x_offset', 0.0)),
-            y_offset = float(config.getdefault('gcode', 'y_offset', 0.0)), 
+            y_offset = float(config.getdefault('gcode', 'y_offset', 0.0)),
             z_offset = float(config.getdefault('gcode', 'z_offset', 0.0))
         )
 
@@ -434,18 +442,20 @@ class PCBMakerApp(App):
 
 
     def on_start(self):
-        if platform=='linux':
-            self.profile = cProfile.Profile()
-            self.profile.enable()
+        pass
+        #if platform=='linux':
+        #    self.profile = cProfile.Profile()
+        #    self.profile.enable()
 
     def on_pause(self):
         print "Pause..."
         return True
 
     def on_stop(self):
-        if platform=='linux':
-            self.profile.disable()
-            self.profile.dump_stats('myapp.profile')
+        pass
+        #if platform=='linux':
+        #    self.profile.disable()
+        #    self.profile.dump_stats('myapp.profile')
         print "Stopping..."
         return True
 
