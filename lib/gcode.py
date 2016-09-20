@@ -19,7 +19,8 @@ class GCodeExport(object):
                  z_cutting = -0.1, feed_cutting = 300, 
                  heater_clearance = 1.0, z_drilling = -8.0,
                  z_pocket = -6.0, x_offset = 0.0,
-                 y_offset = 0.0, z_offset = 0.0):
+                 y_offset = 0.0, z_offset = 0.0,
+                 x_backslash = 0.02, y_backslash = 0.02):
         self.z_flying = z_flying
         self.z_cutting = z_cutting
         self.feed_flying = feed_flying
@@ -27,12 +28,14 @@ class GCodeExport(object):
         self.heater_clearance = heater_clearance        # In mm
         self.z_drilling = z_drilling                    # In mm
         self.z_pocket = z_pocket                        # In mm
-        self.x_offset = x_offset                        # In mm
-        self.y_offset = y_offset                        # In mm
+        self.x_offset = y_offset                        # In mm (transposed)
+        self.y_offset = x_offset                        # In mm (transposed)
         self.z_offset = z_offset                        # In mm
+        self.x_backslash = y_backslash                  # In MM (transposed)
+        self.y_backslash = x_backslash                  # In MM (transposed)
         self.g = None
         self.s = None
-        
+
         self._is_cutting = None
 
     def from_sheet(self, sheet, visualize=False):
@@ -54,10 +57,25 @@ class GCodeExport(object):
             self._make_holes()
             self._set_cutting(False)
             g.move(x=self.y_offset, y=self.x_offset)
-            
+
+            # Optimize cuts
+            #for i in self.g.position_history:
+            #    print i
+            #print len(set(self.g.position_history))
+            #listxyz = reversed(sorted(set(self.g.position_history), key=lambda x: x[2]))
+            #for i in listxyz:
+            #    print i
+            #import numpy as np
+            #history = np.array(self.position_history)
+            #X, Y, Z = history[:, 0], history[:, 1], history[:, 2]
+            #ax.plot(X, Y, Z)
+
             if visualize:
                 g.view('matplotlib')
             result = result.getvalue()
+
+            # Optimize G-Code
+            print result
 
         return result
 
@@ -105,51 +123,51 @@ class GCodeExport(object):
         return holder
 
     def _make_hcuts(self):
-                
         # Horizontal cuts
         hcuts = self._get_segments(self.s.cols+1, self.s.rows+1, transposed=False,
                                    checker=self.s.get_cut, axis=self.s.AXIS_HORIZONTAL)
         #print "HCuts", hcuts
-    
         direction = 1
         for row in range(self.s.rows+1):
             if not hcuts[row]:
                 continue
             if direction==-1:
                 cuts = list(reversed([[end, begin] for begin, end in hcuts[row]]))
+                compensation = -self.x_backslash
             else:
                 cuts = hcuts[row]
+                compensation = self.x_backslash
             for a, b in cuts:
                 self._set_cutting(False)
                 xpos, ypos, zpos = self._get_position(a, row)
-                self.g.move(x=xpos, y=ypos)
+                self.g.move(x=xpos - compensation, y=ypos)
                 self._set_cutting(True)
                 xpos, ypos, zpos = self._get_position(b, row)
-                self.g.move(x=xpos, y=ypos)
+                self.g.move(x=xpos + compensation, y=ypos)
             direction = -direction
 
     def _make_vcuts(self):
-                
         # Vertical cuts
         vcuts = self._get_segments(self.s.rows+1, self.s.cols+1, transposed=True, 
                                    checker=self.s.get_cut, axis=self.s.AXIS_VERTICAL)
         #print "VCuts", vcuts
-    
         direction = -1
         for col in range(self.s.cols, -1, -1):
             if not vcuts[col]:
                 continue
             if direction==-1:
                 cuts = list(reversed([[end, begin] for begin, end in vcuts[col]]))
+                compensation = -self.y_backslash
             else:
                 cuts = vcuts[col]
+                compensation = self.y_backslash
             for a, b in cuts:
                 self._set_cutting(False)
                 xpos, ypos, zpos = self._get_position(col, a)
-                self.g.move(x=xpos, y=ypos)
+                self.g.move(x=xpos, y=ypos - compensation)
                 self._set_cutting(True)
                 xpos, ypos, zpos = self._get_position(col, b)
-                self.g.move(x=xpos, y=ypos)
+                self.g.move(x=xpos, y=ypos + compensation)
             direction = -direction
 
     def _make_holes(self, depth = None):
@@ -175,7 +193,7 @@ class GCodeExport(object):
 
     def _make_diagonals(self, depth = None):
         """
-            Make all holes in the board
+            Make all diagonals in the board
         """
         direction = 1
         for row in range(self.s.rows):
@@ -303,7 +321,7 @@ class GCodeExport(object):
         self._set_cutting(False)
 
 
-    def _make_pocket(self, row, begin, end, depth, separation = 0.2):
+    def _make_pocket(self, row, begin, end, depth, separation = 0.175):
         self._set_cutting(False)
         xpos1, ypos1, zpos1 = self._get_position(begin, row)
         xpos2, ypos2, zpos2 = self._get_position(end, row + 1)
@@ -321,7 +339,7 @@ class GCodeExport(object):
                 self.g.move(x=xpos2, y=ypos1 + height_from)
                 self.g.move(x=xpos2, y=ypos1 + height_to)
                 self.g.move(x=xpos1, y=ypos1 + height_to)
-                
+
 
     def _make_pocket_zz(self, row, begin, end, depth, separation = 0.3):
         self._set_cutting(False)

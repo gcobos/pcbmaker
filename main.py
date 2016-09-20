@@ -237,7 +237,9 @@ class DrawingArea(GridLayout):
             z_pocket = float(config.getdefault('gcode', 'z_pocket', -0.2)),
             x_offset = float(config.getdefault('gcode', 'x_offset', 0.0)),
             y_offset = float(config.getdefault('gcode', 'y_offset', 0.0)),
-            z_offset = float(config.getdefault('gcode', 'z_offset', 0.0))
+            z_offset = float(config.getdefault('gcode', 'z_offset', 0.0)),
+            x_backslash = float(config.getdefault('gcode', 'x_backslash', 0.01)),
+            y_backslash = float(config.getdefault('gcode', 'y_backslash', 0.01)),
         )
 
         data = gcode.from_sheet(self.sheet, visualize=False and (platform=='linux'))
@@ -290,6 +292,8 @@ class PCBMakerApp(App):
             'heater_clearance': '1.0',
             'z_drilling': '1.5',
             'z_pocket': '0.2',
+            'x_backslash': '0.02',
+            'y_backslash': '0.02',
             'x_offset': '0.0',
             'y_offset': '0.0',
             'z_offset': '0.0',
@@ -402,6 +406,16 @@ class PCBMakerApp(App):
           "desc": "Default height for pockets in (in mm)",
           "section": "gcode",
           "key": "z_pocket" },
+        { "type": "numeric",
+          "title": "X Backslash",
+          "desc": "Backslash in the X axis for PCB isolation, given in mm",
+          "section": "gcode",
+          "key": "x_backslash" },
+        { "type": "numeric",
+          "title": "Y Backslash",
+          "desc": "Backslash in the X axis for PCB isolation, given in mm",
+          "section": "gcode",
+          "key": "y_backslash" },
         { "type": "numeric",
           "title": "X Offset",
           "desc": "Starting X position in mm",
