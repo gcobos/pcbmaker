@@ -91,7 +91,7 @@ class GCodeExport(object):
             self.g.move(z=self.z_offset + depth)
         else:
             self.g.feed(self.feed_flying)
-            self.g.move(z=self.z_offset + self.z_flying)            
+            self.g.move(z=self.z_offset + self.z_flying)
 
     def _get_position(self, col, row):
         z = self.z_offset # This will matter when leveling the board
@@ -321,7 +321,7 @@ class GCodeExport(object):
         self._set_cutting(False)
 
 
-    def _make_pocket(self, row, begin, end, depth, separation = 0.175):
+    def _make_pocket(self, row, begin, end, depth, separation = 0.15):
         self._set_cutting(False)
         xpos1, ypos1, zpos1 = self._get_position(begin, row)
         xpos2, ypos2, zpos2 = self._get_position(end, row + 1)
