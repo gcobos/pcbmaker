@@ -26,10 +26,9 @@ pocket_height = 4.2
 is_cutting = False
 
 """
-    Naming the axis makes very easy in case we need to transpose the piece
+    Naming the axis makes it very easy to transpose the piece in case we need it
 """
 with mecode.G(setup = False, x_axis='X', y_axis='Y') as g:
-
 
     def cutting(depth=cutting_z_increment):
         global is_cutting
@@ -60,7 +59,7 @@ with mecode.G(setup = False, x_axis='X', y_axis='Y') as g:
 
     def cut_board():
         """
-        Asume we starts at 0, 0, 0
+            Asume we start at 0, 0, 0
         """
         travelling()
         x = -margin
