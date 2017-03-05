@@ -43,8 +43,7 @@ requirements = kivy
 orientation = landscape
 
 # (bool) Indicate if the application should be fullscreen or not
-fullscreen = 0
-
+fullscreen = 1
 
 #
 # Android specific
@@ -54,7 +53,7 @@ fullscreen = 0
 android.permissions = INTERNET, BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_PRIVILEGED
 
 # (int) Android API to use
-#android.api = 23
+android.api = 21
 
 # (int) Minimum API required (8 = Android 2.2 devices)
 #android.minapi = 14
@@ -63,13 +62,13 @@ android.permissions = INTERNET, BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_PRIVILEGED
 #android.sdk = 21
 
 # (str) Android NDK version to use
-#android.ndk = 9c
+android.ndk = r12b
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 #android.private_storage = True
 
 # (str) Android NDK directory (if empty, it will be automatically downloaded.)
-#android.ndk_path =
+android.ndk_path = /home/drone/Android/android-ndk-r12b/
 
 # (str) Android SDK directory (if empty, it will be automatically downloaded.)
 #android.sdk_path = 
