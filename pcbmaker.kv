@@ -59,9 +59,9 @@ ScreenManagement:
             size: root.size
             pos: root.pos
             orientation: "vertical"
-            FileChooserIconView:
+            FileChooserListView:
                 id: filechooser
-                filters: '*.cb'
+                filters: ['*.cb']
                 dirselect: False
                 path: app.user_data_dir
                 #rootpath: app.user_data_dir
@@ -84,12 +84,12 @@ ScreenManagement:
             size: root.size
             pos: root.pos
             orientation: "vertical"
-            FileChooserIconView:
+            FileChooserListView:
                 id: filechooser
-                filters: '*.cb'
+                filters: ['*.cb']
                 dirselect: False
                 path: app.user_data_dir
-                rootpath: app.user_data_dir
+                #rootpath: app.user_data_dir
                 on_selection: filename_input.text = self.selection and self.selection[0] or ''
                 on_submit: sheet.save_sheet(filechooser.path, self.selection and self.selection[0] or '')
 
@@ -425,3 +425,4 @@ ScreenManagement:
     TabbedPanelItem:
         text: 'Share'
         
+

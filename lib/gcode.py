@@ -305,7 +305,7 @@ class GCodeExport(object):
         depth = depth or self.z_pocket
         # Pockets
         pockets = self._get_segments(self.s.cols, self.s.rows, checker=self.s.is_pocket)
-        #print "Pockets", pockets
+        # print "Pockets", pockets
 
         direction = 1
         for row in range(self.s.rows):
@@ -324,14 +324,14 @@ class GCodeExport(object):
     def _make_pocket(self, row, begin, end, depth, separation = 0.15):
         self._set_cutting(False)
         xpos1, ypos1, zpos1 = self._get_position(begin, row)
-        xpos2, ypos2, zpos2 = self._get_position(end, row + 1)
+        xpos2, ypos2, zpos2 = self._get_position(end, row + self.s.get_row_span(min(begin, end), row))
         center_y = (ypos2 - ypos1) / 2.0
-        num_layers = int(math.ceil(-depth / separation))
-        for layer in range(num_layers):
-            z = layer * depth / num_layers
-            for rect in range(num_layers - layer):
-                height_from = center_y - rect * depth / num_layers
-                height_to = center_y + rect * depth / num_layers
+        num_layers = math.ceil(-depth / separation)
+        for layer in range(int(num_layers)):
+            z = layer * depth / float(num_layers)
+            for rect in range(int(num_layers) - layer):
+                height_from = center_y - rect * depth / float(num_layers)
+                height_to = center_y + rect * depth / float(num_layers)
                 self.g.move(x=xpos1, y=ypos1 + height_from)
                 self._set_cutting(True)
                 if rect == 0:
