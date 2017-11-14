@@ -12,17 +12,17 @@ import random
 import math
 import copy
 
-board_width = 300
-board_height = 240
+board_width = 180
+board_height = 110
 
-number_of_pieces = 40
+number_of_pieces = 12
 
-random_seed = 2     # Every seed generates a different puzzle
-tolerance = 1.8     # When comparing pieces
+random_seed = 13     # Every seed generates a different puzzle
+tolerance = 3.0      # When comparing pieces
 
-board_thickness = 1.6
-cutting_speed = 70.0
-cutting_z_increment = 0.2
+board_thickness = 4.5
+cutting_speed = 300.0
+cutting_z_increment = 1.5
 travelling_speed = 400.0
 travelling_height = 2.0
 drillbit_diameter = 1.0
@@ -110,25 +110,43 @@ def calculate_piece_size(board_width, board_height, number_of_pieces):
     return piece_width, piece_height, horizontal_pieces, vertical_pieces
 
 
-used_arcs = []
-def get_piece_tap(x=0, y=0, axis='X', piece_width=100.0, piece_height=100.0, invert=False):
+def get_new_piece_shape(template_type, inverted=False):
 
-    single_piece_side_template = [
-        Arc(0, 0, 0, 'CW'),
-        Arc(50, 4, 100, 'CW'),
-        Arc(75, 26, 40, 'CCW'),
-        Arc(73, 70, 34, 'CW'),
-        Arc(97, 70, 34, 'CW'),
-        Arc(95, 26 , 34, 'CW'),
-        Arc(120, 4, 40, 'CCW'),
-        Arc(170, 0, 100, 'CW'),
-    ]
-    template_width = 170.0
-    template_height = 240.0
-    scale = math.sqrt(piece_width * piece_height) / template_width
-    new_piece = copy.deepcopy(single_piece_side_template)
+    template_types = {
+        'basic': {
+            'arcs': [
+                Arc(0, 0, 0, 'CW'),
+                Arc(50, 2, 120, 'CW'),
+                Arc(70, 26, 40, 'CCW'),
+                Arc(63, 73, 34, 'CW'),
+                Arc(107, 73, 20, 'CW'),
+                Arc(100, 26 , 34, 'CW'),    
+                Arc(120, 2, 40, 'CCW'),
+                Arc(170, 0, 120, 'CW'),
+            ],
+            'width': 170.0,
+            'height': 320.0
+        }
+    }
+    tt = template_types[template_type]
+    new_piece = copy.deepcopy(tt['arcs'])
+    if inverted:
+        for i, arc in enumerate(new_piece[:-1]):
+            arc.r = new_piece[i+1].r
+            arc.direction = new_piece[i+1].direction
+            arc.direction = 'CW' if arc.direction=='CCW' else 'CCW'
+        new_piece[-1].r = 0
+        new_piece[-1].direction = new_piece[-2].direction
+
+    return new_piece, tt['width'], tt['height']
+
+used_arcs = []
+def get_piece_tap(x=0, y=0, axis='X', piece_width=100.0, piece_height=100.0, inverted=False):
+
     flipped = random.choice((0, 1))
-    for j in reversed(new_piece) if invert else new_piece:
+    new_piece, template_width, template_height = get_new_piece_shape('basic', inverted)
+    scale = math.sqrt(piece_width * piece_height) / template_width
+    for j in reversed(new_piece) if inverted else new_piece:
         # Ensure every arc is different
         while j in used_arcs: j.randomize('Y')
         used_arcs.append(copy.deepcopy(j))
@@ -152,20 +170,23 @@ def get_piece_tap(x=0, y=0, axis='X', piece_width=100.0, piece_height=100.0, inv
                 j.direction = 'CW' if j.direction=='CCW' else 'CCW'
         j.x += x
         j.y += y
+        #if inverted:
+        #    j.direction = 'CW' if j.direction=='CCW' else 'CCW'
+            
     return new_piece
     
 
-def generate_cut(x, y, axis, piece_count, piece_width, piece_height, invert = False):
+def generate_cut(x, y, axis, piece_count, piece_width, piece_height, inverted = False):
 
     cut = []
     for i in range(piece_count):
-        cut.extend(get_piece_tap(x, y, axis, piece_width, piece_height, invert))
+        cut.extend(get_piece_tap(x, y, axis, piece_width, piece_height, inverted))
         if axis == 'Y':
             y += piece_height
         else:
             x += piece_width
-    #if invert:
-    #    cut = list(reversed(cut))
+    if inverted:
+        cut = list(reversed(cut))
         
     return cut
 
@@ -180,14 +201,14 @@ def generate_puzzle(board_width, board_height, number_of_pieces):
     x = piece_width
     y = 0
     for i in range(horizontal_pieces - 1):
-        cuts.append(generate_cut(x, y, 'Y', vertical_pieces, piece_width, piece_height, invert=i%2))
+        cuts.append(generate_cut(x, y, 'Y', vertical_pieces, piece_width, piece_height, inverted=i%2))
         x += piece_width
 
     # Horizontal cuts    
     x = 0
     y = piece_height
     for i in range(vertical_pieces - 1):
-        cuts.append(generate_cut(x, y, 'X', horizontal_pieces, piece_width, piece_height, invert=i%2))
+        cuts.append(generate_cut(x, y, 'X', horizontal_pieces, piece_width, piece_height, inverted=i%2))
         y += piece_height
 
     return cuts
@@ -205,14 +226,20 @@ if __name__=='__main__':
     g.absolute()
     travelling()
     g.move(0, 0)
-    for cut in puzzle_cuts:
-        travelling()
-        g.move(cut[0].x, cut[0].y)
-        cutting()
-        for arc in cut:
-            if arc.r:
-                g.arc(x=arc.x, y=arc.y, radius=arc.r, direction=arc.direction)
 
+    for i in range(0, int(board_thickness / cutting_z_increment)):
+        for cut in puzzle_cuts:
+            travelling()
+            g.move(cut[0].x, cut[0].y)
+            cutting((i + 1) * cutting_z_increment)
+            for arc in cut:
+                if arc.r:
+                    while True:
+                        try:
+                            g.arc(x=arc.x, y=arc.y, radius=arc.r, direction=arc.direction)
+                            break
+                        except RuntimeError:
+                            arc.r += 0.1
 
     travelling()
 
