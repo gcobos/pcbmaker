@@ -3,6 +3,7 @@
 """
 
 Generate the gcode to mill a random jigsaw puzzle
+By: Gonzalo Cobos Bergillos (2017)
 
 """
 
